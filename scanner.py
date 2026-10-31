@@ -8,13 +8,20 @@ import re
 from datetime import datetime
 import requests
 import platform
+import sys
 
 class VanguardScannerGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Vanguard Scanner - Zafiyet ve Ağ Analiz Aracı v3.1")
+        self.root.title("Vanguard Scanner - Zafiyet ve Ağ Analiz Aracı v3.2")
         self.root.geometry("780x600")
         self.root.configure(bg="#0c0c0c")
+        
+        # Ana pencereyi başta gizliyoruz
+        self.root.withdraw()
+        
+        # Yasal uyarı penceresini çağırıyoruz
+        self.yasal_uyari_goster()
 
         top_frame = tk.Frame(root, bg="#0c0c0c")
         top_frame.pack(pady=15)
@@ -40,8 +47,46 @@ class VanguardScannerGUI:
         self.log_area = scrolledtext.ScrolledText(root, width=90, height=22, bg="#000000", fg="#00ff00", font=("Consolas", 10))
         self.log_area.pack(padx=15, pady=10)
         
-        self.log_yaz("Vanguard Scanner v3.1 Başlatıldı...\n- Belli bir cihazda açık aramak için 'PORT TARAMA'yı kullanın.\n- Wi-Fi ağınıza bağlı cihazları görmek için 'AĞDAKİ CİHAZLARI BUL'a tıklayın.\n" + "-"*70 + "\n")
+        self.log_yaz("Vanguard Scanner v3.2 Başlatıldı...\n- Belli bir cihazda açık aramak için 'PORT TARAMA'yı kullanın.\n- Wi-Fi ağınıza bağlı cihazları görmek için 'AĞDAKİ CİHAZLARI BUL'a tıklayın.\n" + "-"*70 + "\n")
 
+    # --- YASAL UYARI MODÜLÜ ---
+    def yasal_uyari_goster(self):
+        self.uyari_penceresi = tk.Toplevel()
+        self.uyari_penceresi.title("⚠️ Yasal Uyarı ve Sorumluluk Reddi")
+        self.uyari_penceresi.geometry("550x300")
+        self.uyari_penceresi.configure(bg="#0c0c0c")
+        self.uyari_penceresi.resizable(False, False)
+        
+        # Kullanıcı "X" tuşuna basarsa programı tamamen kapatır
+        self.uyari_penceresi.protocol("WM_DELETE_WINDOW", self.reddet)
+
+        metin = (
+            "VANGUARD SCANNER - SORUMLULUK REDDİ\n\n"
+            "Bu yazılım yalnızca eğitim, savunma amaçlı analizler ve sahibinden \n"
+            "açık izin alınmış sistemler üzerinde kullanılmak üzere geliştirilmiştir.\n\n"
+            "İzinsiz ağlara bağlanmak, tarama yapmak veya zafiyet aramak \n"
+            "Türk Ceza Kanunu (TCK Madde 243-244) kapsamında bilişim suçudur.\n\n"
+            "Bu aracı kullanarak, doğabilecek her türlü hukuki ve cezai \n"
+            "sorumluluğun tamamen size ait olduğunu kabul etmiş olursunuz."
+        )
+        
+        tk.Label(self.uyari_penceresi, text=metin, fg="#00ff00", bg="#0c0c0c", font=("Consolas", 10), justify="center").pack(pady=30)
+
+        btn_frame = tk.Frame(self.uyari_penceresi, bg="#0c0c0c")
+        btn_frame.pack(pady=10)
+
+        tk.Button(btn_frame, text="KABUL EDİYORUM", bg="#004d00", fg="#00ff00", font=("Consolas", 10, "bold"), command=self.kabul_et).pack(side="left", padx=15)
+        tk.Button(btn_frame, text="REDDEDİYORUM (ÇIKIŞ)", bg="#4d0000", fg="#ff0000", font=("Consolas", 10, "bold"), command=self.reddet).pack(side="right", padx=15)
+
+    def kabul_et(self):
+        self.uyari_penceresi.destroy()
+        self.root.deiconify() # Ana pencereyi göster
+
+    def reddet(self):
+        self.root.destroy()
+        sys.exit()
+
+    # --- PORT, ZAFİYET VE AĞ KEŞFİ KODLARI AYNEN KORUNDU ---
     def log_yaz(self, mesaj):
         self.log_area.insert(tk.END, mesaj + "\n")
         self.log_area.see(tk.END)
@@ -53,7 +98,6 @@ class VanguardScannerGUI:
                 dosya.write(self.log_area.get("1.0", tk.END))
             messagebox.showinfo("Başarılı", f"Sonuçlar kaydedildi:\n{dosya_yolu}")
 
-    # --- AĞ KEŞFİ (Wİ-Fİ CİHAZ BULUCU) MODÜLÜ ---
     def start_discovery_thread(self):
         self.discover_btn.config(state=tk.DISABLED, text="AĞ TARANIYOR...")
         self.start_btn.config(state=tk.DISABLED)
@@ -78,7 +122,6 @@ class VanguardScannerGUI:
         base_ip = f"{ip_parts[0]}.{ip_parts[1]}.{ip_parts[2]}."
         
         def ping_ip(ip):
-            # Siyah ekran açılmasını engelleyen (CREATE_NO_WINDOW) platform kontrolü
             if platform.system() == "Windows":
                 subprocess.call(['ping', '-n', '1', '-w', '200', ip], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
             else:
@@ -122,7 +165,6 @@ class VanguardScannerGUI:
         self.start_btn.config(state=tk.NORMAL)
         self.save_btn.config(state=tk.NORMAL)
 
-    # --- PORT VE ZAFİYET TARAMA MODÜLÜ ---
     def get_mac_address(self, ip):
         try:
             if platform.system() == "Windows":
